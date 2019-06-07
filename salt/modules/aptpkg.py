@@ -1046,11 +1046,11 @@ def purge(name=None, pkgs=None, **kwargs):
 
 def upgrade(refresh=True, dist_upgrade=False, **kwargs):
     '''
-    .. versionchanged:: 2015.8.12,2016.3.3,2016.11.0
+    .. versionchanged:: 2015.8.12,2016.3.3,2016.11.0,2018.3
         On minions running systemd>=205, `systemd-run(1)`_ is now used to
         isolate commands which modify installed packages from the
         ``salt-minion`` daemon's control group. This is done to keep systemd
-        from killing any apt-get/dpkg commands spawned by Salt when the
+        from killing any apt-get/dpkg commands   spawned by Salt when the
         ``salt-minion`` service is restarted. (see ``KillMode`` in the
         `systemd.kill(5)`_ manpage for more information). If desired, usage of
         `systemd-run(1)`_ can be suppressed by setting a :mod:`config option
@@ -1123,6 +1123,8 @@ def upgrade(refresh=True, dist_upgrade=False, **kwargs):
         cmd.append('--allow-unauthenticated')
     if kwargs.get('download_only', False):
         cmd.append('--download-only')
+    if kwargs.get('allow_downgrades', False):
+        cmd.append('--allow_downgrades')
 
     cmd.append('dist-upgrade' if dist_upgrade else 'upgrade')
 
@@ -1361,9 +1363,9 @@ def list_pkgs(versions_as_list=False,
            '${Status} ${Package} ${Version} ${Architecture}\n', '-W']
 
     out = __salt__['cmd.run_stdout'](
-            cmd,
-            output_loglevel='trace',
-            python_shell=False)
+        cmd,
+        output_loglevel='trace',
+        python_shell=False)
     # Typical lines of output:
     # install ok installed zsh 4.3.17-1ubuntu1 amd64
     # deinstall ok config-files mc 3:4.8.1-2ubuntu1 amd64
@@ -1464,7 +1466,8 @@ def _get_upgradable(dist_upgrade=True, **kwargs):
                       '([^ ]+) '          # Package name
                       r'\(([^ ]+)')       # Version
     keys = ['name', 'version']
-    _get = lambda l, k: l[keys.index(k)]
+
+    def _get(l, k): return l[keys.index(k)]
 
     upgrades = rexp.findall(out)
 
@@ -1538,8 +1541,8 @@ def version_cmp(pkg1, pkg2, ignore_epoch=False):
 
         salt '*' pkg.version_cmp '0.2.4-0ubuntu1' '0.2.4.1-0ubuntu1'
     '''
-    normalize = lambda x: six.text_type(x).split(':', 1)[-1] \
-                if ignore_epoch else six.text_type(x)
+    def normalize(x): return six.text_type(x).split(':', 1)[-1] \
+        if ignore_epoch else six.text_type(x)
     # both apt_pkg.version_compare and _cmd_quote need string arguments.
     pkg1 = normalize(pkg1)
     pkg2 = normalize(pkg2)
